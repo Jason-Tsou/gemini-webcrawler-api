@@ -1,49 +1,50 @@
-import express from 'express';
-import fetch from 'node-fetch';
-import { JSDOM } from 'jsdom';
-
+const express = require("express");
+const axios = require("axios");
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
+// 請在 Render 的環境變數中設定 GEMINI_API_KEY
 const API_KEY = process.env.GEMINI_API_KEY;
 
-app.post('/ask', async (req, res) => {
-  const { question, url } = req.body;
+app.use(express.json());
+
+app.post("/api/ask", async (req, res) => {
+  const question = req.body.question;
+
+  const prompt = `
+你只能根據以下網址的資訊回答問題（不要使用網路上的知識）：
+https://law.moj.gov.tw
+
+使用者問題是：
+${question}
+`;
 
   try {
-    const html = await fetch(url).then(r => r.text());
-    const dom = new JSDOM(html);
-    const text = dom.window.document.body.textContent;
-    const cleanedText = text.replace(/\s+/g, ' ').trim().slice(0, 6000);
+    const geminiResponse = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      }
+    );
 
-    const prompt = `
-你只能根據下列內容回答問題，不可自行推論。
-若無法回答，請回覆「無法從資料中得知」：
-
-【網站內容】
-${cleanedText}
-
-【問題】
-${question}
-    `;
-
-    const geminiRes = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=\${API_KEY}\`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    const data = await geminiRes.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "❌ 無法取得回應";
+    const reply =
+      geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "❌ Gemini 無回應";
     res.json({ reply });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "伺服器錯誤" });
+  } catch (error) {
+    console.error("Gemini API 錯誤：", error.message);
+    res.status(500).json({ error: "伺服器錯誤，請稍後再試。" });
   }
 });
 
-app.listen(3000, () => {
-  console.log("✅ Server running on port 3000");
+app.get("/", (req, res) => {
+  res.send("Gemini Webcrawler API is running.");
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ Server is running on port ${PORT}`);
 });
