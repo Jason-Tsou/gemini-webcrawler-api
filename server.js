@@ -49,11 +49,13 @@ ${question}
       "❌ 無回應";
     res.json({ answer: reply });
 
-  } catch (error) {
-    console.error("❌ 伺服器錯誤：", error.response?.data || error.message);
-    res.status(500).json({
-      error: "處理失敗：" + (error.response?.data?.error?.message || error.message)
-    });
+} catch (error) {
+  console.error("❌ 伺服器錯誤詳細：", error.toJSON?.() || error.message);
+  res.status(500).json({
+    error: "處理失敗：" + JSON.stringify(error.toJSON?.() || error.message)
+  });
+}
+
   }
 });
 
