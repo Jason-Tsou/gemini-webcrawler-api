@@ -1,11 +1,12 @@
 const express = require("express");
 const axios = require("axios");
+const cors = require("cors"); // ✅ 加這行
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 請在 Render 的環境變數中設定 GEMINI_API_KEY
 const API_KEY = process.env.GEMINI_API_KEY;
 
+app.use(cors()); // ✅ 加這行，開啟所有來源的跨網域請求
 app.use(express.json());
 
 app.post("/api/ask", async (req, res) => {
