@@ -1,9 +1,9 @@
-const cors = require("cors");
 const express = require("express");
 const axios = require("axios");
+const https = require("https"); // ✅ 用來忽略憑證錯誤
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 const API_KEY = process.env.GEMINI_API_KEY;
 
 app.use(express.json());
@@ -13,11 +13,18 @@ app.post("/ask", async (req, res) => {
   const { url, question } = req.body;
 
   try {
-    // 抓取網頁內容
-    const html = await axios.get(url, { timeout: 10000 });
-    const textOnly = html.data.replace(/<[^>]*>/g, '').slice(0, 12000); // 去除 HTML tag，限制長度
+    // ✅ 忽略憑證驗證錯誤的 HTTPS Agent（僅建議開發或可信網站使用）
+    const agent = new https.Agent({ rejectUnauthorized: false });
 
-    // 建立 prompt
+    // 抓取網頁內容
+    const html = await axios.get(url, {
+      timeout: 10000,
+      httpsAgent: agent
+    });
+
+    const textOnly = html.data.replace(/<[^>]*>/g, '').slice(0, 12000); // 去除 HTML 標籤並限制字數
+
+    // 建立 Prompt
     const prompt = `
 你只能根據以下網頁內容回答問題，不要使用其他知識：
 
@@ -40,6 +47,7 @@ ${question}
       geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "❌ 無回應";
     res.json({ answer: reply });
+
   } catch (error) {
     console.error("❌ 伺服器錯誤：", error.response?.data || error.message);
     res.status(500).json({
@@ -48,7 +56,7 @@ ${question}
   }
 });
 
-// 根目錄測試頁
+// 根目錄測試
 app.get("/", (req, res) => {
   res.send("✅ Gemini Webcrawler API is running.");
 });
