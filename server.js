@@ -1,12 +1,12 @@
 const express = require("express");
 const axios = require("axios");
-const cors = require("cors"); // ✅ 加這行
+const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
-app.use(cors()); // ✅ 加這行，開啟所有來源的跨網域請求
+app.use(cors()); // ✅ 允許所有來源呼叫
 app.use(express.json());
 
 app.post("/api/ask", async (req, res) => {
@@ -18,23 +18,17 @@ https://law.moj.gov.tw
 
 使用者問題是：
 ${question}
-`;
+  `;
 
   try {
     const geminiResponse = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`,
       {
-        contents: [
-          {
-            parts: [{ text: prompt }]
-          }
-        ]
+        contents: [{ parts: [{ text: prompt }] }]
       }
     );
 
-    const reply =
-      geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "❌ Gemini 無回應";
+    const reply = geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || "❌ Gemini 無回應";
     res.json({ reply });
   } catch (error) {
     console.error("Gemini API 錯誤：", error.message);
